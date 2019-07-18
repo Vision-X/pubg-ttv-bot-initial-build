@@ -1,37 +1,34 @@
-require('dotenv');
+require('dotenv').config();
 const tmi = require('tmi.js');
 const fetch = require('node-fetch');
+const fs = require('fs');
+
 // https://dev.twitch.tv/docs/irc/
 
-//
-
-//
-
-//
-
-//
 // Define configuration options
 
-const un = process.env;
-console.log(un)
-const opts = {
-  identity: {
-    username: process.env.BOT_USERNAME || 'PUBGSTATS-BOT',
-    password: process.env.OAUTH_TOKEN || 'oauth:bz8czlk9mh8as9jvedk125mh6c4zw9'
-  },
-  channels: [
-    process.env.CHANNEL_NAME || 'mainslayermayne'
-  ]
-};
-
-
-// PUBG Developer access
+// TWITCH CREDENTIALS
+const BOT_NAME = process.env.BOT_USERNAME;
+const BOT_TOKEN = process.env.OAUTH_TOKEN;
+const CHANNEL = process.env.CHANNEL_NAME;
+// PUBG CREDNTIALS
 const PUBG_API_KEY = process.env.PUBG_API_KEY;
 
+const opts = {
+  identity: {
+    username: BOT_NAME || process.env.BOT_USERNAME,
+    password: BOT_TOKEN || process.env.OAUTH_TOKEN,
+  },
+  channels: [
+    CHANNEL || process.env.CHANNEL_NAME,
+  ]
+};
+// Global temp
+var userName;
 
 // Create a bot with our options
 const bot = new tmi.client(opts);
-console.log(opts)
+
 // Register our event handlers (defined below)
 bot.on('message', onMessageHandler);
 bot.on('connected', onConnectedHandler);
@@ -45,23 +42,37 @@ function onMessageHandler (target, context, msg, self) {
 
   // Remove whitespace from chat message
   const commandName = msg.trim();
+  // var commandName = msg.slice(0, msg.indexOf(" ") || msg.length+1);
+  console.log("Command Name === ", commandName);
+  // console.log("full msg === ", msg);
 
   // If the command is known, let's execute it
   if (commandName === '!dice') {
     const num = rollDice();
     bot.say(target, `You rolled a ${num}`);
     console.log(`* Executed ${commandName} command`);
-  } else if (commandName.includes('!stats ')) {
+  }
 
-          console.log(msg)
-        if (self) { return; } // Ignore messages from the bot
-
+   if (commandName.includes('!stats')) {
+        console.log("** !stats IF BLOCK **");
+        userName = msg.slice(msg.indexOf(' ') + 1, msg.length);
+        // console.log("userName : ", userName.trim());
         // Remove whitespace from chat message
-        const userName = msg.slice(msg.indexOf(' ') + 1, msg.length);
+        // const userName = msg.slice(msg.indexOf(' ') + 1, msg.length);
+        // bot.say(target, `You entered UserName ${userName}`);
         // If the command is known, let's execute it
-        if (userName.length > 4) {
-          console.log(userName);
-          getLG(userName);
+        if (userName) {
+          console.log("** Username Exists IF BLOCK **");
+          console.log("Username: ", userName);
+          fetchPlayer(userName)
+                .then(res => res.json())
+                .then(json => saveFetch(json))
+                .then(matches => getMatches(matches))
+                .then(matchAry => saveMatches(matchAry))
+                .then(id => fetchMatchData(id))
+                .then(newRes => newRes.json())
+                .then(json2 => saveMatchData(userName, json2))
+                .catch(console.err)
         } else {
             console.log(`* Unknown user ${userName}`);
         }
@@ -71,30 +82,64 @@ function onMessageHandler (target, context, msg, self) {
 }
 
 // GET last game
-function getLG(nameEntered) {
+function fetchPlayer(nameEntered) {
+  console.log("** fetchPlayer fn **");
+  const PUBG_AUTH = process.env.PUBG_AUTH;
   const url = `https://api.pubg.com/shards/steam/players?filter[playerNames]=${nameEntered}`;
-  const header = {
-  "Authorization": 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJqdGkiOiIyYWYyZjM2MC04OTVlLTAxMzctOTRhYS00N2ZiNGVlMjNhYjEiLCJpc3MiOiJnYW1lbG9ja2VyIiwiaWF0IjoxNTYzMjE2MTI1LCJwdWIiOiJibHVlaG9sZSIsInRpdGxlIjoicHViZyIsImFwcCI6ImFqY3JldzIwMDMteWFoIn0.pDzHyh1I0tUMTVkCQ3GakLRGj3DQJMRdEMjBBhOOUUE',
-  "Accept": "application/vnd.api+json"
+  const opts = {
+    method: 'GET',
+    headers: {
+      "Authorization": `${PUBG_AUTH}`,
+      "Accept": "application/vnd.api+json"
+    }
   }
-  return fetch(url)
-         .then(res => {
-           res.json();
-           console.log(res.data);
-         })
-         .catch(console.err)
-  // res.data.relationships.matches.data
+  return fetch(url, opts);
 }
 
-// GET stats from last game
-function getStatsFromLG(d) {
-  console.log("data ..... : ", d.data);
+function saveFetch(data) {
+  console.log("saveFetch function");
+  let d = data;
+  return d;
+  // let meh = JSON.parse(JSON.stringify(d));
+  // fs.writeFileAsync('data-state2.json', JSON.stringify(meh, null, 4), function(err) {
+  //   console.log('File successfuly written!!!');
+  // });
 }
 
-// Function called when the "dice" command is issued
-function rollDice () {
-  const sides = 6;
-  return Math.floor(Math.random() * sides) + 1;
+function saveMatches(matches) {
+  // fs.writeFileSync(`${player}-${Date.now()}.json`, JSON.stringify(matches, null, 4), function(err) {
+  //   console.log('File successfuly written!!!');
+  // });
+  console.log(matches[1].id);
+  return matches[1].id;
+}
+
+function getMatches(data) {
+  console.log("** GET MATCHES FN **");
+  let player = data.data[0].attributes.name;
+  let matchesAry = data.data[0].relationships.matches.data;
+  // console.log(matchesAry);
+  return matchesAry
+  // saveMatches(data.data[0].attributes.name, matchesAry);
+}
+
+function fetchMatchData(id) {
+  console.log("** FETCH MATCH DATA fn");
+  const url = `https://api.pubg.com/shards/steam/matches/${id}`;
+  console.log("U R L  :  ", url);
+  const opts = {
+    method: "GET",
+    headers: {
+      Accept: "application/vnd.api+json",
+    }
+  };
+  return fetch(url, opts)
+}
+
+function saveMatchData(player, match) {
+  fs.writeFileSync(`${player}-FullGameStats-${match.data.id}.json`, JSON.stringify(match, null, 4), function(err) {
+    console.log('File successfuly written!!!');
+  });
 }
 
 // Called every time the bot connects to Twitch chat
