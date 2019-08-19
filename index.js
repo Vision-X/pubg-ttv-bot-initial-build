@@ -16,11 +16,11 @@ const PUBG_API_KEY = process.env.PUBG_API_KEY;
 
 const opts = {
   identity: {
-    username: BOT_NAME || process.env.BOT_USERNAME,
-    password: BOT_TOKEN || process.env.OAUTH_TOKEN,
+    username: BOT_NAME,
+    password: BOT_TOKEN,
   },
   channels: [
-    CHANNEL || process.env.CHANNEL_NAME,
+    CHANNEL,
   ]
 };
 // Global temp
@@ -53,31 +53,31 @@ function onMessageHandler (target, context, msg, self) {
     console.log(`* Executed ${commandName} command`);
   }
 
-   if (commandName.includes('!stats')) {
-        console.log("** !stats IF BLOCK **");
-        userName = msg.slice(msg.indexOf(' ') + 1, msg.length);
-        // console.log("userName : ", userName.trim());
-        // Remove whitespace from chat message
-        // const userName = msg.slice(msg.indexOf(' ') + 1, msg.length);
-        // bot.say(target, `You entered UserName ${userName}`);
-        // If the command is known, let's execute it
-        if (userName) {
-          console.log("** Username Exists IF BLOCK **");
-          console.log("Username: ", userName);
-          fetchPlayer(userName)
-                .then(res => res.json())
-                .then(json => saveFetch(json))
-                .then(matches => getMatches(matches))
-                .then(matchAry => saveMatches(matchAry))
-                .then(id => fetchMatchData(id))
-                .then(newRes => newRes.json())
-                .then(json2 => saveMatchData(userName, json2))
-                .catch(console.err)
-        } else {
-            console.log(`* Unknown user ${userName}`);
-        }
+  if (commandName.includes('!stats')) {
+      console.log("** !stats IF BLOCK **");
+      userName = msg.slice(msg.indexOf(' ') + 1, msg.length);
+      // console.log("userName : ", userName.trim());
+      // Remove whitespace from chat message
+      // const userName = msg.slice(msg.indexOf(' ') + 1, msg.length);
+      // bot.say(target, `You entered UserName ${userName}`);
+      // If the command is known, let's execute it
+    if (userName) {
+        console.log("** Username Exists IF BLOCK **");
+        console.log("Username: ", userName);
+        fetchPlayer(userName)
+                  .then(res => res.json())
+                  .then(json => saveFetch(json))
+                  .then(matches => getMatches(matches))
+                  .then(matchAry => saveMatches(matchAry))
+                  .then(id => fetchMatchData(id))
+                  .then(newRes => newRes.json())
+                  .then(json2 => saveMatchData(userName, json2))
+                  .catch(console.err)
+    } else {
+        console.log(`* Unknown user ${userName}`);
+    }
   } else {
-    console.log(`* Unknown command ${commandName}`);
+      console.log(`* Unknown command ${commandName}`);
   }
 }
 
@@ -110,8 +110,8 @@ function saveMatches(matches) {
   // fs.writeFileSync(`${player}-${Date.now()}.json`, JSON.stringify(matches, null, 4), function(err) {
   //   console.log('File successfuly written!!!');
   // });
-  console.log(matches[1].id);
-  return matches[1].id;
+  console.log(matches[0].id);
+  return matches[0].id;
 }
 
 function getMatches(data) {
@@ -135,6 +135,36 @@ function fetchMatchData(id) {
   };
   return fetch(url, opts)
 }
+
+// need methods and nested commands
+  // reshape full game stats objs (flatten/smaller)
+  // stash rosters and ids to player object ^
+
+  // Saving player data
+    // stash top 5 games by type
+    // otherwise aggregate averages/time per game type
+
+  // saving match data
+    // Match lists are only previous 14 days
+    // Is the match data still accessible beyond that?
+    // decisions based on that
+
+  // Scalable needs
+    // data purge every 14 days might be necessary
+    // need to track # of users
+    // # of commands issued, and what
+    // failures / logging
+    // load balancing
+    // async
+    // threads / workers
+    // redundancy in DB / 2 different backup sources
+    // costs estimates based on storage needs over time
+
+  // Big picture
+    // Website / Portal / Documentation
+    // deployment - potential cluster load balancing
+    // 
+
 
 function saveMatchData(player, match) {
   fs.writeFileSync(`${player}-FullGameStats-${match.data.id}.json`, JSON.stringify(match, null, 4), function(err) {
